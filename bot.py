@@ -1,13 +1,13 @@
 import os
 import telebot
-from telebot import types
+from flask import Flask, request
 
-# Читаем токен из переменной окружения
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("Не найден BOT_TOKEN в переменных окружения!")
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise RuntimeError("Не найден BOT_TOKEN в переменных окружения")
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
 # Инструкции для моделей
 instructions = {
@@ -141,3 +141,4 @@ if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=f"https://{os.environ.get('RAILWAY_STATIC_URL')}/{TOKEN}")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
