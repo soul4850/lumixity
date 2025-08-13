@@ -91,28 +91,53 @@ instructions = {
 Если не получилось решить проблему, обратитесь: @dolmartik""",
 }
 
-# --- Команды ---
+# Главное меню
+def main_menu(chat_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🎧 Наушники")
+    bot.send_message(chat_id, "Выберите категорию товара:", reply_markup=markup)
+
+# Модели наушников
+def headphones_menu(chat_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    models = ["T90", "Dots 8s", "G36", "TWS MAX", "F6-s", "TWS Air 2Pods", "TWS PRO", "N13", "⬅ Назад", "🏠 Старт"]
+    markup.add(*models)
+    bot.send_message(chat_id, "Пожалуйста, выберите модель товара из списка ниже, данную информацию Вы можете найти на оригинальной коробке", reply_markup=markup)
+
+# Обработка команд /start
 @bot.message_handler(commands=['start'])
 def start(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton("🎧 Наушники"))
-    bot.send_message(message.chat.id, "Привет! Выберите категорию товара:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Добро пожаловать! 👋")
+    main_menu(message.chat.id)
 
-@bot.message_handler(func=lambda m: m.text == "🎧 Наушники")
-def choose_model(message):
-    markup = types.InlineKeyboardMarkup()
-    for model in list(instructions.keys()) + no_instructions:
-        markup.add(types.InlineKeyboardButton(model, callback_data=f"model_{model}"))
-    bot.send_message(message.chat.id,
-                     "Пожалуйста, выберите модель товара из списка ниже, данную информацию Вы можете найти на оригинальной коробке:",
-                     reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("model_"))
-def send_instruction(call):
-    model = call.data.replace("model_", "")
-    if model in instructions:
-        bot.send_message(call.message.chat.id, instructions[model])
+# Обработка нажатий
+@bot.message_handler(func=lambda m: True)
+def handle_message(message):
+    if message.text == "🎧 Наушники":
+        headphones_menu(message.chat.id)
+    elif message.text in instructions:
+        bot.send_message(message.chat.id, instructions[message.text])
+    elif message.text in ["TWS Air 2Pods", "TWS PRO", "N13"]:
+        bot.send_message(message.chat.id, no_instruction_text)
+    elif message.text == "⬅ Назад":
+        main_menu(message.chat.id)
+    elif message.text == "🏠 Старт":
+        start(message)
     else:
-        bot.send_message(call.message.chat.id, f"На данную модель пока нет инструкции.\nЕсли возникла проблема — обратитесь в поддержку: @dolmartik")
+        bot.send_message(message.chat.id, "Не понял команду. Выберите из меню.")
 
-bot.polling(none_stop=True)
+# Webhook для Railway
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+    return "OK", 200
+
+@app.route("/")
+def index():
+    return "Бот работает!", 200
+
+if __name__ == "__main__":
+    # Настройка webhook
+    bot.remove_webhook()
+    bot.set_webhook(url=f"https://{os.environ.get('RAILWAY_STATIC_URL')}/{TOKEN}")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
